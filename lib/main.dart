@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:web_socket_channel/io.dart';
@@ -25,6 +28,9 @@ class _MyFormState extends State<MyForm> {
   final TextEditingController messageController = TextEditingController();
   final TextEditingController ipController = TextEditingController();
   late WebSocketChannel channel;
+  late String connectionName = '';
+  int mobileConnections = 0;
+  int desktopConnections = 0;
 
   @override
   Widget build(BuildContext context) {
@@ -50,14 +56,25 @@ class _MyFormState extends State<MyForm> {
             ElevatedButton(
               onPressed: () {
                 // Establecer la conexión WebSocket al presionar el botón "Connectar"
+
                 String ipAddress = ipController.text;
-                channel = IOWebSocketChannel.connect('ws://$ipAddress:8887');
+                connectionName = generateRandomString();
+
+                channel = IOWebSocketChannel.connect(
+                    'ws://$ipAddress:8887?name=$connectionName');
                 // Enviar el mensaje al servidor
+                connectToWebSocket();
+
                 String message = messageController.text;
                 channel.sink.add(message);
               },
               child: Text('Connectar'),
             ),
+            SizedBox(height: 20),
+            Text('Conexión: $connectionName'),
+            SizedBox(height: 20),
+            Text('Conexiones móviles: $mobileConnections'),
+            Text('Conexiones de escritorio: $desktopConnections'),
           ],
         ),
       ),
@@ -69,5 +86,33 @@ class _MyFormState extends State<MyForm> {
     // Cerrar la conexión WebSocket al salir de la página
     channel.sink.close();
     super.dispose();
+  }
+
+  String generateRandomString() {
+    const characters =
+        'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    final random = Random();
+    final length = 8;
+    return List.generate(length, (index) {
+      return characters[random.nextInt(characters.length)];
+    }).join();
+  }
+
+  void connectToWebSocket() {
+    // Manejar la conexión al WebSocket aquí
+    channel.sink.add(json.encode({"type": "connect", "platform": "mobile"}));
+
+    // Escuchar mensajes del servidor
+    channel.stream.listen((message) {
+      Map<String, dynamic> data = json.decode(message);
+
+      // Manejar el mensaje del servidor según la estructura de tus datos
+      if (data["type"] == "connection_count") {
+        setState(() {
+          mobileConnections = data["mobile_connections"];
+          desktopConnections = data["desktop_connections"];
+        });
+      }
+    });
   }
 }
