@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:web_socket_channel/web_socket_channel.dart';
+import 'package:web_socket_channel/io.dart';
 
 void main() {
   runApp(MyApp());
@@ -22,6 +24,7 @@ class MyForm extends StatefulWidget {
 class _MyFormState extends State<MyForm> {
   final TextEditingController messageController = TextEditingController();
   final TextEditingController ipController = TextEditingController();
+  late WebSocketChannel channel;
 
   @override
   Widget build(BuildContext context) {
@@ -46,10 +49,12 @@ class _MyFormState extends State<MyForm> {
             SizedBox(height: 20),
             ElevatedButton(
               onPressed: () {
-                // Aquí puedes manejar la lógica para enviar el mensaje a la IP proporcionada.
-                String message = messageController.text;
+                // Establecer la conexión WebSocket al presionar el botón "Connectar"
                 String ipAddress = ipController.text;
-                // ¡Haz lo que necesites con el mensaje y la IP!
+                channel = IOWebSocketChannel.connect('ws://$ipAddress:8887');
+                // Enviar el mensaje al servidor
+                String message = messageController.text;
+                channel.sink.add(message);
               },
               child: Text('Connectar'),
             ),
@@ -57,5 +62,12 @@ class _MyFormState extends State<MyForm> {
         ),
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    // Cerrar la conexión WebSocket al salir de la página
+    channel.sink.close();
+    super.dispose();
   }
 }
