@@ -58,17 +58,24 @@ class _MyFormState extends State<MyForm> {
                 // Establecer la conexión WebSocket al presionar el botón "Connectar"
 
                 String ipAddress = ipController.text;
-                connectionName = generateRandomString();
+                connectionName = "desktop";
 
                 channel = IOWebSocketChannel.connect(
                     'ws://$ipAddress:8887?name=$connectionName');
                 // Enviar el mensaje al servidor
                 connectToWebSocket();
-
+                channel.sink.add("desktop");
+              },
+              child: Text('Connectar'),
+            ),
+            SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: () {
+                // Enviar el mensaje al servidor
                 String message = messageController.text;
                 channel.sink.add(message);
               },
-              child: Text('Connectar'),
+              child: Text('Enviar'),
             ),
             SizedBox(height: 20),
             Text('Conexión: $connectionName'),
@@ -88,19 +95,9 @@ class _MyFormState extends State<MyForm> {
     super.dispose();
   }
 
-  String generateRandomString() {
-    const characters =
-        'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-    final random = Random();
-    final length = 8;
-    return List.generate(length, (index) {
-      return characters[random.nextInt(characters.length)];
-    }).join();
-  }
-
   void connectToWebSocket() {
     // Manejar la conexión al WebSocket aquí
-    channel.sink.add(json.encode({"type": "connect", "platform": "mobile"}));
+    //channel.sink.add("desktop");
 
     // Escuchar mensajes del servidor
     channel.stream.listen((message) {
