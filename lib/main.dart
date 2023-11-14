@@ -97,9 +97,7 @@ class _MyFormState extends State<MyForm> {
 
   void connectToWebSocket() {
     // Manejar la conexión al WebSocket aquí
-    //channel.sink.add("desktop");
 
-    // Escuchar mensajes del servidor
     channel.stream.listen((message) {
       Map<String, dynamic> data = json.decode(message);
 
