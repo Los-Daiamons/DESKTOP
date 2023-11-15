@@ -64,7 +64,6 @@ class _MyFormState extends State<MyForm> {
                     'ws://$ipAddress:8887?name=$connectionName');
                 // Enviar el mensaje al servidor
                 connectToWebSocket();
-                channel.sink.add("desktop");
               },
               child: Text('Connectar'),
             ),
