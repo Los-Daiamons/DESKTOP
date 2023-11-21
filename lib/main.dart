@@ -4,9 +4,17 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:web_socket_channel/io.dart';
+import 'package:fluttertoast/fluttertoast.dart';
 
 void main() {
   runApp(MyApp());
+}
+
+class Message {
+  final String text;
+  final DateTime timestamp;
+
+  Message({required this.text, required this.timestamp});
 }
 
 class MyApp extends StatelessWidget {
@@ -27,10 +35,11 @@ class MyForm extends StatefulWidget {
 class _MyFormState extends State<MyForm> {
   final TextEditingController messageController = TextEditingController();
   final TextEditingController ipController = TextEditingController();
-  late WebSocketChannel channel;
+  late WebSocketChannel channel = IOWebSocketChannel.connect('');
   late String connectionName = '';
   int mobileConnections = 0;
   int desktopConnections = 0;
+  List<Message> messages = [];
 
   @override
   Widget build(BuildContext context) {
@@ -70,17 +79,39 @@ class _MyFormState extends State<MyForm> {
             SizedBox(height: 20),
             ElevatedButton(
               onPressed: () {
-                // Enviar el mensaje al servidor
-                String message = messageController.text;
-                channel.sink.add(message);
+                String messageText = messageController.text;
+                bool isDuplicate =
+                    messages.any((message) => message.text == messageText);
+
+                if (!isDuplicate) {
+                  Message newMessage =
+                      Message(text: messageText, timestamp: DateTime.now());
+                  setState(() {
+                    messages.add(newMessage);
+                    messages.sort((a, b) => b.timestamp.compareTo(a.timestamp));
+                  });
+
+                  channel.sink.add(messageText);
+                } else {}
               },
               child: Text('Enviar'),
             ),
             SizedBox(height: 20),
-            Text('Conexión: $connectionName'),
-            SizedBox(height: 20),
             Text('Conexiones móviles: $mobileConnections'),
             Text('Conexiones de escritorio: $desktopConnections'),
+            SizedBox(height: 20),
+            Expanded(
+              child: ListView.builder(
+                itemCount: messages.length,
+                itemBuilder: (context, index) {
+                  return ListTile(
+                    title: Text(messages[index].text),
+                    subtitle: Text(
+                        'Enviado el: ${messages[index].timestamp.toString()}'),
+                  );
+                },
+              ),
+            ),
           ],
         ),
       ),
