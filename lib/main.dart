@@ -80,19 +80,22 @@ class _MyFormState extends State<MyForm> {
             ElevatedButton(
               onPressed: () {
                 String messageText = messageController.text;
-                bool isDuplicate =
-                    messages.any((message) => message.text == messageText);
+                if (messageText.isNotEmpty) {
+                  bool isDuplicate =
+                      messages.any((message) => message.text == messageText);
 
-                if (!isDuplicate) {
-                  Message newMessage =
-                      Message(text: messageText, timestamp: DateTime.now());
-                  setState(() {
-                    messages.add(newMessage);
-                    messages.sort((a, b) => b.timestamp.compareTo(a.timestamp));
-                  });
+                  if (!isDuplicate) {
+                    Message newMessage =
+                        Message(text: messageText, timestamp: DateTime.now());
+                    setState(() {
+                      messages.add(newMessage);
+                      messages
+                          .sort((a, b) => b.timestamp.compareTo(a.timestamp));
+                    });
 
-                  channel.sink.add(messageText);
-                } else {}
+                    channel.sink.add(messageText);
+                  } else {}
+                }
               },
               child: Text('Enviar'),
             ),
