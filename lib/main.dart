@@ -1,13 +1,15 @@
 import 'dart:convert';
-import 'dart:math';
+import 'dart:io';
 
+import 'package:desktop/messageListScreen.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:web_socket_channel/io.dart';
-import 'package:fluttertoast/fluttertoast.dart';
+import 'package:path_provider/path_provider.dart';
 
 void main() {
-  runApp(MyApp());
+  runApp(const MyApp());
 }
 
 class Message {
@@ -15,12 +17,27 @@ class Message {
   final DateTime timestamp;
 
   Message({required this.text, required this.timestamp});
+  Map<String, dynamic> toJson() {
+    return {
+      'text': text,
+      'timestamp': timestamp.toIso8601String(),
+    };
+  }
+
+  factory Message.fromJson(Map<String, dynamic> json) {
+    return Message(
+      text: json['text'],
+      timestamp: DateTime.parse(json['timestamp']),
+    );
+  }
 }
 
 class MyApp extends StatelessWidget {
+  const MyApp({super.key});
+
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
+    return const MaterialApp(
       debugShowCheckedModeBanner: false,
       home: MyForm(),
     );
@@ -28,6 +45,8 @@ class MyApp extends StatelessWidget {
 }
 
 class MyForm extends StatefulWidget {
+  const MyForm({super.key});
+
   @override
   _MyFormState createState() => _MyFormState();
 }
@@ -40,28 +59,29 @@ class _MyFormState extends State<MyForm> {
   int mobileConnections = 0;
   int desktopConnections = 0;
   List<Message> messages = [];
+  String estado = 'Desconectado';
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Desktop App para controlar el panel LED'),
+        title: const Text('Desktop'),
       ),
       body: Padding(
-        padding: EdgeInsets.all(40.0),
+        padding: const EdgeInsets.all(40.0),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             TextField(
               controller: messageController,
-              decoration: InputDecoration(labelText: 'Mensaje'),
+              decoration: const InputDecoration(labelText: 'Mensaje'),
             ),
-            SizedBox(height: 20),
+            const SizedBox(height: 20),
             TextField(
               controller: ipController,
-              decoration: InputDecoration(labelText: 'Dirección IP'),
+              decoration: const InputDecoration(labelText: 'Dirección IP'),
             ),
-            SizedBox(height: 20),
+            const SizedBox(height: 20),
             ElevatedButton(
               onPressed: () {
                 // Establecer la conexión WebSocket al presionar el botón "Connectar"
@@ -72,49 +92,56 @@ class _MyFormState extends State<MyForm> {
                 channel = IOWebSocketChannel.connect(
                     'ws://$ipAddress:8887?name=$connectionName');
                 // Enviar el mensaje al servidor
+                channel.runtimeType;
                 connectToWebSocket();
+                //loadMessagesFromFile();
               },
-              child: Text('Connectar'),
+              child: const Text('Connectar'),
             ),
-            SizedBox(height: 20),
+            const SizedBox(height: 20),
             ElevatedButton(
               onPressed: () {
-                String messageText = messageController.text;
-                if (messageText.isNotEmpty) {
-                  bool isDuplicate =
-                      messages.any((message) => message.text == messageText);
+                if (estado == 'Conectado') {
+                  String messageText = messageController.text;
+                  if (messageText.isNotEmpty) {
+                    bool isDuplicate =
+                        messages.any((message) => message.text == messageText);
 
-                  if (!isDuplicate) {
-                    Message newMessage =
-                        Message(text: messageText, timestamp: DateTime.now());
-                    setState(() {
-                      messages.add(newMessage);
-                      messages
-                          .sort((a, b) => b.timestamp.compareTo(a.timestamp));
-                    });
-
-                    channel.sink.add(messageText);
-                  } else {}
+                    if (!isDuplicate) {
+                      Message newMessage =
+                          Message(text: messageText, timestamp: DateTime.now());
+                      setState(() {
+                        messages.add(newMessage);
+                        messages
+                            .sort((a, b) => b.timestamp.compareTo(a.timestamp));
+                      });
+                      channel.sink.add(messageText);
+                      escribirMensajeEnArchivo(newMessage);
+                    }
+                  }
                 }
               },
-              child: Text('Enviar'),
+              child: const Text('Enviar'),
             ),
-            SizedBox(height: 20),
+            const SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: () {
+                if (estado == 'Conectado') {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) =>
+                          MessageListScreen(messages: messages),
+                    ),
+                  );
+                }
+              },
+              child: const Text('Lista de Mensajes'),
+            ),
+            const SizedBox(height: 20),
             Text('Conexiones móviles: $mobileConnections'),
             Text('Conexiones de escritorio: $desktopConnections'),
-            SizedBox(height: 20),
-            Expanded(
-              child: ListView.builder(
-                itemCount: messages.length,
-                itemBuilder: (context, index) {
-                  return ListTile(
-                    title: Text(messages[index].text),
-                    subtitle: Text(
-                        'Enviado el: ${messages[index].timestamp.toString()}'),
-                  );
-                },
-              ),
-            ),
+            Text('Estado: $estado'),
           ],
         ),
       ),
@@ -123,24 +150,68 @@ class _MyFormState extends State<MyForm> {
 
   @override
   void dispose() {
-    // Cerrar la conexión WebSocket al salir de la página
+    estado = 'Desconectado';
     channel.sink.close();
     super.dispose();
   }
 
   void connectToWebSocket() {
-    // Manejar la conexión al WebSocket aquí
+    channel.stream.listen(
+      (message) {
+        estado = 'Conectado';
+        Map<String, dynamic> data = json.decode(message);
 
-    channel.stream.listen((message) {
-      Map<String, dynamic> data = json.decode(message);
+        if (data["type"] == "connection_count") {
+          setState(() {
+            mobileConnections = data["mobile_connections"];
+            desktopConnections = data["desktop_connections"];
+          });
+        }
+      },
+      onDone: () {
+        // La conexión WebSocket se cerró de forma normal
+        estado = 'Desconectado';
+        setState(() {});
+      },
+      onError: (error) {
+        // Ocurrió un error en la conexión WebSocket
+        estado = 'Desconectado';
+        setState(() {});
+      },
+    );
+  }
 
-      // Manejar el mensaje del servidor según la estructura de tus datos
-      if (data["type"] == "connection_count") {
-        setState(() {
-          mobileConnections = data["mobile_connections"];
-          desktopConnections = data["desktop_connections"];
-        });
-      }
-    });
+  Future<List<Message>> leerMensajesDesdeArchivo(String rutaArchivo) async {
+    try {
+      String contenido = await rootBundle.loadString(rutaArchivo);
+      List<dynamic> jsonList = jsonDecode(contenido);
+      List<Message> mensajes =
+          jsonList.map((json) => Message.fromJson(json)).toList();
+      return mensajes;
+    } catch (e) {
+      // Manejar errores según sea necesario
+      print("Error al leer el archivo: $e");
+      return [];
+    }
+  }
+
+  Future<void> escribirMensajeEnArchivo(Message nuevoMensaje) async {
+    try {
+      // Obtener el directorio de documentos de la aplicación
+      final directorio = await getApplicationDocumentsDirectory();
+      // Construir la ruta del archivo dentro del directorio de documentos
+      final rutaArchivo = "${directorio.path}/messages.json";
+
+      File archivo = File(rutaArchivo);
+      List<Message> mensajesExistente =
+          await leerMensajesDesdeArchivo(rutaArchivo);
+      mensajesExistente.add(nuevoMensaje);
+      String jsonMensajes = jsonEncode(
+          mensajesExistente.map((mensaje) => mensaje.toJson()).toList());
+      await archivo.writeAsString(jsonMensajes);
+    } catch (e) {
+      // Manejar errores según sea necesario
+      print("Error al escribir en el archivo: $e");
+    }
   }
 }

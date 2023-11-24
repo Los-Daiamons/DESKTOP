@@ -1,3 +1,4 @@
 {
-    "cmake.configureOnOpen": true
+    "cmake.configureOnOpen": true,
+    "cmake.sourceDirectory": "C:/Users/marca/OneDrive/Escritorio/Info/PROYECTOS/desktop/windows/flutter"
 }
