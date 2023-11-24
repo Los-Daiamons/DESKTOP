@@ -3,10 +3,8 @@ import 'dart:io';
 
 import 'package:desktop/messageListScreen.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 import 'package:web_socket_channel/io.dart';
-import 'package:path_provider/path_provider.dart';
 
 void main() {
   runApp(const MyApp());
@@ -60,6 +58,7 @@ class _MyFormState extends State<MyForm> {
   int desktopConnections = 0;
   List<Message> messages = [];
   String estado = 'Desconectado';
+  final directorio = Directory.current;
 
   @override
   Widget build(BuildContext context) {
@@ -92,9 +91,8 @@ class _MyFormState extends State<MyForm> {
                 channel = IOWebSocketChannel.connect(
                     'ws://$ipAddress:8887?name=$connectionName');
                 // Enviar el mensaje al servidor
-                channel.runtimeType;
                 connectToWebSocket();
-                //loadMessagesFromFile();
+                importarListaMensajes();
               },
               child: const Text('Connectar'),
             ),
@@ -181,9 +179,23 @@ class _MyFormState extends State<MyForm> {
     );
   }
 
+  void importarListaMensajes() async {
+    messages =
+        await leerMensajesDesdeArchivo("${directorio.path}\\messages.json");
+  }
+
   Future<List<Message>> leerMensajesDesdeArchivo(String rutaArchivo) async {
     try {
-      String contenido = await rootBundle.loadString(rutaArchivo);
+      File archivo = File(rutaArchivo);
+      if (!await archivo.exists()) {
+        // El archivo no existe, retorna una lista vacía
+        return [];
+      }
+
+      // Lee el contenido del archivo
+      String contenido = await archivo.readAsString();
+
+      // Decodifica el contenido JSON y crea una lista de mensajes
       List<dynamic> jsonList = jsonDecode(contenido);
       List<Message> mensajes =
           jsonList.map((json) => Message.fromJson(json)).toList();
@@ -198,9 +210,8 @@ class _MyFormState extends State<MyForm> {
   Future<void> escribirMensajeEnArchivo(Message nuevoMensaje) async {
     try {
       // Obtener el directorio de documentos de la aplicación
-      final directorio = await getApplicationDocumentsDirectory();
       // Construir la ruta del archivo dentro del directorio de documentos
-      final rutaArchivo = "${directorio.path}/messages.json";
+      final rutaArchivo = "${directorio.path}\\messages.json";
 
       File archivo = File(rutaArchivo);
       List<Message> mensajesExistente =
