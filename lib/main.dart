@@ -58,7 +58,6 @@ class _MyFormState extends State<MyForm> {
   int desktopConnections = 0;
   List<Message> messages = [];
   String estado = 'Desconectado';
-  final directorio = Directory.current;
 
   @override
   Widget build(BuildContext context) {
@@ -91,6 +90,7 @@ class _MyFormState extends State<MyForm> {
                 channel = IOWebSocketChannel.connect(
                     'ws://$ipAddress:8887?name=$connectionName');
                 // Enviar el mensaje al servidor
+                mostrarDialogoAutenticacion();
                 connectToWebSocket();
                 importarListaMensajes();
               },
@@ -180,8 +180,10 @@ class _MyFormState extends State<MyForm> {
   }
 
   void importarListaMensajes() async {
+    final directorio = Directory.current;
+
     messages =
-        await leerMensajesDesdeArchivo("${directorio.path}\\messages.json");
+        await leerMensajesDesdeArchivo("${directorio.path}/messages.json");
   }
 
   Future<List<Message>> leerMensajesDesdeArchivo(String rutaArchivo) async {
@@ -199,6 +201,8 @@ class _MyFormState extends State<MyForm> {
       List<dynamic> jsonList = jsonDecode(contenido);
       List<Message> mensajes =
           jsonList.map((json) => Message.fromJson(json)).toList();
+      mensajes.sort((a, b) => b.timestamp.compareTo(a.timestamp));
+
       return mensajes;
     } catch (e) {
       // Manejar errores según sea necesario
@@ -211,7 +215,9 @@ class _MyFormState extends State<MyForm> {
     try {
       // Obtener el directorio de documentos de la aplicación
       // Construir la ruta del archivo dentro del directorio de documentos
-      final rutaArchivo = "${directorio.path}\\messages.json";
+      final directorio = Directory.current;
+
+      final rutaArchivo = "${directorio.path}/messages.json";
 
       File archivo = File(rutaArchivo);
       List<Message> mensajesExistente =
@@ -224,5 +230,58 @@ class _MyFormState extends State<MyForm> {
       // Manejar errores según sea necesario
       print("Error al escribir en el archivo: $e");
     }
+  }
+
+  void mostrarDialogoAutenticacion() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        String usuario = '';
+        String contrasenya = '';
+
+        return AlertDialog(
+          title: const Text('Autenticación'),
+          content: Column(
+            children: [
+              TextField(
+                onChanged: (value) {
+                  usuario = value;
+                },
+                decoration: const InputDecoration(labelText: 'Usuario'),
+              ),
+              TextField(
+                onChanged: (value) {
+                  contrasenya = value;
+                },
+                obscureText: true,
+                decoration: const InputDecoration(labelText: 'Contraseña'),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop(); // Cerrar el diálogo
+              },
+              child: const Text('Cancelar'),
+            ),
+            TextButton(
+              onPressed: () {
+                // Aquí puedes utilizar las variables 'usuario' y 'contraseña'
+                // para enviar las credenciales al servidor o realizar cualquier otra lógica.
+                channel.sink.add(json.encode({
+                  'type': 'auth',
+                  'user': usuario,
+                  'password': contrasenya
+                }));
+
+                Navigator.of(context).pop(); // Cerrar el diálogo
+              },
+              child: const Text('Aceptar'),
+            ),
+          ],
+        );
+      },
+    );
   }
 }
