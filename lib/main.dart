@@ -215,16 +215,16 @@ class _MyFormState extends State<MyForm> {
     try {
       // Obtener el directorio de documentos de la aplicación
       // Construir la ruta del archivo dentro del directorio de documentos
+
       final directorio = Directory.current;
-
       final rutaArchivo = "${directorio.path}/messages.json";
-
       File archivo = File(rutaArchivo);
       List<Message> mensajesExistente =
           await leerMensajesDesdeArchivo(rutaArchivo);
       mensajesExistente.add(nuevoMensaje);
       String jsonMensajes = jsonEncode(
           mensajesExistente.map((mensaje) => mensaje.toJson()).toList());
+
       await archivo.writeAsString(jsonMensajes);
     } catch (e) {
       // Manejar errores según sea necesario
@@ -261,7 +261,12 @@ class _MyFormState extends State<MyForm> {
           actions: [
             TextButton(
               onPressed: () {
-                Navigator.of(context).pop(); // Cerrar el diálogo
+                channel.sink.close();
+                setState(() {
+                  mobileConnections = 0;
+                  desktopConnections = 0;
+                });
+                Navigator.of(context).pop();
               },
               child: const Text('Cancelar'),
             ),
@@ -271,11 +276,11 @@ class _MyFormState extends State<MyForm> {
                 // para enviar las credenciales al servidor o realizar cualquier otra lógica.
                 channel.sink.add(json.encode({
                   'type': 'auth',
-                  'user': usuario,
+                  'username': usuario,
                   'password': contrasenya
                 }));
 
-                Navigator.of(context).pop(); // Cerrar el diálogo
+                Navigator.of(context).pop();
               },
               child: const Text('Aceptar'),
             ),
