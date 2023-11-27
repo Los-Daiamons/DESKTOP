@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:flutter/services.dart';
 
 import 'package:desktop/messageListScreen.dart';
 import 'package:flutter/material.dart';
@@ -128,8 +129,8 @@ class _MyFormState extends State<MyForm> {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) =>
-                          MessageListScreen(messages: messages),
+                      builder: (context) => MessageListScreen(
+                          messages: messages, channel: channel),
                     ),
                   );
                 }
@@ -272,8 +273,6 @@ class _MyFormState extends State<MyForm> {
             ),
             TextButton(
               onPressed: () {
-                // Aquí puedes utilizar las variables 'usuario' y 'contraseña'
-                // para enviar las credenciales al servidor o realizar cualquier otra lógica.
                 channel.sink.add(json.encode({
                   'type': 'auth',
                   'username': usuario,
