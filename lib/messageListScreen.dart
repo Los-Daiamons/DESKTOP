@@ -12,7 +12,7 @@ class MessageListScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Lista de Mensajes'),
+        title: const Text('Lista de Mensajes'),
       ),
       body: ListView.builder(
         itemCount: messages.length,
@@ -38,14 +38,15 @@ class MessageListScreen extends StatelessWidget {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: Text('Confirmar reenvío'),
-          content: Text('¿Estás seguro de que quieres reenviar este mensaje?'),
+          title: const Text('Confirmar reenvío'),
+          content:
+              const Text('¿Estás seguro de que quieres reenviar este mensaje?'),
           actions: [
             TextButton(
               onPressed: () {
                 Navigator.of(context).pop(); // Cerrar el diálogo
               },
-              child: Text('Cancelar'),
+              child: const Text('Cancelar'),
             ),
             TextButton(
               onPressed: () {
@@ -53,7 +54,7 @@ class MessageListScreen extends StatelessWidget {
                 print('Mensaje reenviado al servidor: ${message.text}');
                 Navigator.of(context).pop(); // Cerrar el diálogo
               },
-              child: Text('Aceptar'),
+              child: const Text('Aceptar'),
             ),
           ],
         );
