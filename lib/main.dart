@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:flutter/services.dart';
 
 import 'package:desktop/messageListScreen.dart';
 import 'package:flutter/material.dart';
@@ -58,7 +59,6 @@ class _MyFormState extends State<MyForm> {
   int desktopConnections = 0;
   List<Message> messages = [];
   String estado = 'Desconectado';
-  final directorio = Directory.current;
 
   @override
   Widget build(BuildContext context) {
@@ -91,6 +91,7 @@ class _MyFormState extends State<MyForm> {
                 channel = IOWebSocketChannel.connect(
                     'ws://$ipAddress:8887?name=$connectionName');
                 // Enviar el mensaje al servidor
+                mostrarDialogoAutenticacion();
                 connectToWebSocket();
                 importarListaMensajes();
               },
@@ -128,8 +129,8 @@ class _MyFormState extends State<MyForm> {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) =>
-                          MessageListScreen(messages: messages),
+                      builder: (context) => MessageListScreen(
+                          messages: messages, channel: channel),
                     ),
                   );
                 }
@@ -180,8 +181,10 @@ class _MyFormState extends State<MyForm> {
   }
 
   void importarListaMensajes() async {
+    final directorio = Directory.current;
+
     messages =
-        await leerMensajesDesdeArchivo("${directorio.path}\\messages.json");
+        await leerMensajesDesdeArchivo("${directorio.path}/messages.json");
   }
 
   Future<List<Message>> leerMensajesDesdeArchivo(String rutaArchivo) async {
@@ -199,6 +202,8 @@ class _MyFormState extends State<MyForm> {
       List<dynamic> jsonList = jsonDecode(contenido);
       List<Message> mensajes =
           jsonList.map((json) => Message.fromJson(json)).toList();
+      mensajes.sort((a, b) => b.timestamp.compareTo(a.timestamp));
+
       return mensajes;
     } catch (e) {
       // Manejar errores según sea necesario
@@ -211,18 +216,76 @@ class _MyFormState extends State<MyForm> {
     try {
       // Obtener el directorio de documentos de la aplicación
       // Construir la ruta del archivo dentro del directorio de documentos
-      final rutaArchivo = "${directorio.path}\\messages.json";
 
+      final directorio = Directory.current;
+      final rutaArchivo = "${directorio.path}/messages.json";
       File archivo = File(rutaArchivo);
       List<Message> mensajesExistente =
           await leerMensajesDesdeArchivo(rutaArchivo);
       mensajesExistente.add(nuevoMensaje);
       String jsonMensajes = jsonEncode(
           mensajesExistente.map((mensaje) => mensaje.toJson()).toList());
+
       await archivo.writeAsString(jsonMensajes);
     } catch (e) {
       // Manejar errores según sea necesario
       print("Error al escribir en el archivo: $e");
     }
+  }
+
+  void mostrarDialogoAutenticacion() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        String usuario = '';
+        String contrasenya = '';
+
+        return AlertDialog(
+          title: const Text('Autenticación'),
+          content: Column(
+            children: [
+              TextField(
+                onChanged: (value) {
+                  usuario = value;
+                },
+                decoration: const InputDecoration(labelText: 'Usuario'),
+              ),
+              TextField(
+                onChanged: (value) {
+                  contrasenya = value;
+                },
+                obscureText: true,
+                decoration: const InputDecoration(labelText: 'Contraseña'),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                channel.sink.close();
+                setState(() {
+                  mobileConnections = 0;
+                  desktopConnections = 0;
+                });
+                Navigator.of(context).pop();
+              },
+              child: const Text('Cancelar'),
+            ),
+            TextButton(
+              onPressed: () {
+                channel.sink.add(json.encode({
+                  'type': 'auth',
+                  'username': usuario,
+                  'password': contrasenya
+                }));
+
+                Navigator.of(context).pop();
+              },
+              child: const Text('Aceptar'),
+            ),
+          ],
+        );
+      },
+    );
   }
 }
