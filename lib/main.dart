@@ -169,12 +169,18 @@ class _MyFormState extends State<MyForm> {
       onDone: () {
         // La conexión WebSocket se cerró de forma normal
         estado = 'Desconectado';
-        setState(() {});
+        setState(() {
+          mobileConnections = 0;
+          desktopConnections = 0;
+        });
       },
       onError: (error) {
         // Ocurrió un error en la conexión WebSocket
         estado = 'Desconectado';
-        setState(() {});
+        setState(() {
+          mobileConnections = 0;
+          desktopConnections = 0;
+        });
       },
     );
   }
